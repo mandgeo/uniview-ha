@@ -7,6 +7,12 @@ A custom Home Assistant integration for **Uniview NVR and IP cameras** using the
 
 ---
 
+## Credits
+
+Developed with the assistance of [Claude](https://claude.ai) (Anthropic AI).
+
+---
+
 ## Features
 
 - 📹 **Live streaming** (Main + Sub stream per channel, RTSP via NVR)
