@@ -1,0 +1,9 @@
+{
+  "name": "Uniview Next",
+  "domain": "uniview_next",
+  "documentation": "https://github.com/YOUR_USERNAME/uniview-next-ha",
+  "issue_tracker": "https://github.com/YOUR_USERNAME/uniview-next-ha/issues",
+  "homeassistant": "2023.6.0",
+  "iot_class": "local_push",
+  "codeowners": ["@YOUR_USERNAME"]
+}

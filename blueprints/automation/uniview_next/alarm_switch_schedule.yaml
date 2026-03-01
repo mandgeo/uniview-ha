@@ -1,0 +1,50 @@
+blueprint:
+  name: "Uniview — Program activare detectie miscare"
+  description: >
+    Activează detectia de mișcare la o oră și o dezactivează la alta.
+    Util pentru a activa alarma noaptea și a o dezactiva ziua.
+  domain: automation
+  input:
+    motion_switch:
+      name: Switch detectie miscare
+      selector:
+        entity:
+          domain: switch
+          integration: uniview_next
+    time_on:
+      name: Ora activare
+      default: "22:00:00"
+      selector:
+        time:
+    time_off:
+      name: Ora dezactivare
+      default: "07:00:00"
+      selector:
+        time:
+
+trigger:
+  - platform: time
+    at: !input time_on
+    id: "turn_on"
+  - platform: time
+    at: !input time_off
+    id: "turn_off"
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "turn_on"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input motion_switch
+      - conditions:
+          - condition: trigger
+            id: "turn_off"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input motion_switch
+
+mode: single

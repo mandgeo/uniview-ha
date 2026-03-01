@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Uniview Device",
+        "description": "Enter the connection details for your Uniview NVR or IP camera.",
+        "data": {
+          "host": "IP Address / Hostname",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "use_https": "Use HTTPS",
+          "set_notification_host": "Set notification host (recommended)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to device. Check IP, port and credentials.",
+      "unknown": "Unexpected error. Check logs for details."
+    },
+    "abort": {
+      "already_configured": "Device already configured."
+    }
+  }
+}

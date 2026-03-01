@@ -1,0 +1,63 @@
+blueprint:
+  name: "Uniview — Notificare detectie miscare"
+  description: >
+    Trimite o notificare pe telefon când o cameră Uniview detectează mișcare.
+    Opțional atașează un snapshot al camerei.
+  domain: automation
+  input:
+    motion_sensor:
+      name: Senzor mișcare
+      description: Selectează binary sensor-ul de mișcare al camerei
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    camera:
+      name: Camera (opțional, pentru snapshot)
+      description: Camera asociată senzorului (pentru imaginea din notificare)
+      default: ""
+      selector:
+        entity:
+          domain: camera
+    notify_service:
+      name: Serviciu notificare
+      description: "Ex: notify.mobile_app_telefon"
+      selector:
+        text:
+    message:
+      name: Mesaj
+      default: "Mișcare detectată!"
+      selector:
+        text:
+    cooldown:
+      name: Cooldown (secunde)
+      description: Timp minim între două notificări consecutive
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 300
+          unit_of_measurement: secunde
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+
+condition:
+  - condition: template
+    value_template: >
+      {{ (as_timestamp(now()) - as_timestamp(state_attr('automation.' ~ this.entity_id.split('.')[1], 'last_triggered') | default(0))) > (cooldown | int) }}
+
+action:
+  - service: !input notify_service
+    data:
+      message: !input message
+      data:
+        image: >
+          {% set cam = camera %}
+          {% if cam != "" %}
+            /api/camera_proxy/{{ cam }}
+          {% endif %}
+
+mode: single
