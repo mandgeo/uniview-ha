@@ -63,8 +63,8 @@ ALARM_EVENTS: dict[str, dict] = {
         "device_class": "motion",
         "endpoint_type": "smart",
         "smart_key": "CrossLineDetection",
-        "alarm_type_on": "CrossLineAlarmOn",
-        "alarm_type_off": "CrossLineAlarmOff",
+        "alarm_type_on": "LineDetectorCrossed",
+        "alarm_type_off": None,   # NVR nu trimite Off — auto-reset în senzor
         "can_toggle": True,
     },
     "IntrusionDetection": {
@@ -73,8 +73,8 @@ ALARM_EVENTS: dict[str, dict] = {
         "device_class": "motion",
         "endpoint_type": "smart",
         "smart_key": "IntrusionDetection",
-        "alarm_type_on": "IntrusionAlarmOn",
-        "alarm_type_off": "IntrusionAlarmOff",
+        "alarm_type_on": "FieldDetectorObjectsInside",
+        "alarm_type_off": "FieldDetectorObjectsOutside",  # ipotetic
         "can_toggle": True,
     },
     "LeaveZone": {
