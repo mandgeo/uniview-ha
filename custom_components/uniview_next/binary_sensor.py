@@ -1,25 +1,26 @@
 """Binary sensor platform for Uniview Next — alarm events.
 
-Each sensor represents a specific alarm type on a specific channel.
+State updates:
+1. PUSH (real-time): Device POSTs alarm → HA HTTP view → event bus → sensor
+2. POLL (fallback): Coordinator polls every 30s for armed/disarmed state
 
-State updates happen two ways:
-1. PUSH (fast, real-time): Device POSTs alarm push → HA webhook → event bus.
-   Sensor listens for EVENT_UNIVIEW_ALARM and matches by ChannelID + AlarmType.
-2. POLL (slow, fallback): Coordinator polls device every 30s.
-   This only tells us if detection is *armed*, not if an alarm is currently active.
+For smart events (camera-side AI) without an Off event (auto_off=True),
+the sensor resets automatically after AUTO_OFF_SECONDS seconds.
 """
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ALARM_EVENTS, DOMAIN, EVENT_UNIVIEW_ALARM, MANUFACTURER
+from .const import ALARM_EVENTS, AUTO_OFF_SECONDS, DOMAIN, EVENT_UNIVIEW_ALARM, MANUFACTURER
 from .coordinator import UnivewCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,13 +38,20 @@ async def async_setup_entry(
         ch_name = coordinator.get_channel_name(ch_id)
         for event_key, event_info in ALARM_EVENTS.items():
             entities.append(
-                UnivewAlarmBinarySensor(coordinator, entry, ch_id, ch_name, event_key, event_info)
+                UnivewAlarmBinarySensor(
+                    coordinator, entry, ch_id, event_key, event_info, ch_name
+                )
             )
     async_add_entities(entities)
 
 
 class UnivewAlarmBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Binary sensor for a specific alarm type on a channel."""
+    """Binary sensor for a specific alarm type on a channel.
+
+    For events with auto_off=True (smart camera-side events that have no Off
+    push), the sensor automatically resets to off after AUTO_OFF_SECONDS.
+    The cancel handle is stored so any subsequent On event restarts the timer.
+    """
 
     _attr_has_entity_name = True
 
@@ -52,15 +60,16 @@ class UnivewAlarmBinarySensor(CoordinatorEntity, BinarySensorEntity):
         coordinator: UnivewCoordinator,
         entry: ConfigEntry,
         channel_id: int,
-        channel_name: str,
         event_key: str,
         event_info: dict,
+        ch_name: str = "",
     ) -> None:
         super().__init__(coordinator)
         self._channel_id = channel_id
         self._event_key = event_key
         self._event_info = event_info
         self._is_on = False
+        self._auto_off_cancel = None  # handle to cancel pending auto-off
 
         serial = entry.data.get("serial", entry.entry_id)
         dev_info = coordinator.device_info_data
@@ -75,7 +84,7 @@ class UnivewAlarmBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{serial}_ch{channel_id}")},
-            name=f"{entry.title} — {channel_name}",
+            name=f"{entry.title} — {ch_name}",
             manufacturer=dev_info.get("Manufacturer", MANUFACTURER),
             model=dev_info.get("DeviceModel", ""),
             sw_version=dev_info.get("FirmwareVersion", ""),
@@ -92,13 +101,12 @@ class UnivewAlarmBinarySensor(CoordinatorEntity, BinarySensorEntity):
             "channel_id": self._channel_id,
             "event_type": self._event_key,
             "alarm_type_on": self._event_info.get("alarm_type_on"),
+            "auto_off": self._event_info.get("auto_off", False),
         }
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Coordinator poll update — does not change is_on (push is authoritative for that)."""
-        # Polling tells us if detection is armed, not if alarm is currently firing.
-        # We only update is_on from push events.
+        """Coordinator poll — does not change is_on (push is authoritative)."""
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -107,29 +115,64 @@ class UnivewAlarmBinarySensor(CoordinatorEntity, BinarySensorEntity):
             self.hass.bus.async_listen(EVENT_UNIVIEW_ALARM, self._handle_alarm_push)
         )
 
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel pending auto-off timer when entity is removed."""
+        self._cancel_auto_off()
+
+    @callback
+    def _cancel_auto_off(self) -> None:
+        if self._auto_off_cancel is not None:
+            self._auto_off_cancel()
+            self._auto_off_cancel = None
+
+    @callback
+    def _schedule_auto_off(self) -> None:
+        """Schedule automatic reset to off after AUTO_OFF_SECONDS."""
+        self._cancel_auto_off()
+
+        @callback
+        def _do_auto_off(now=None) -> None:
+            self._auto_off_cancel = None
+            if self._is_on:
+                _LOGGER.debug(
+                    "Auto-off %s ch%s after %ss",
+                    self._event_key, self._channel_id, AUTO_OFF_SECONDS,
+                )
+                self._is_on = False
+                self.async_write_ha_state()
+
+        self._auto_off_cancel = async_call_later(
+            self.hass, AUTO_OFF_SECONDS, _do_auto_off
+        )
+
     @callback
     def _handle_alarm_push(self, event) -> None:
         """Handle alarm push from device.
 
-        event.data structure (set by _handle_webhook in __init__.py):
-          AlarmType:   "MotionAlarmOn" | "MotionAlarmOff" | ...
-          ChannelID:   int (channel ID) or -1 if not a channel alarm
-          Active:      bool (True if AlarmType ends with "AlarmOn")
+        event.data:
+          AlarmType:  "MotionAlarmOn" | "FieldDetectorObjectsInside" | etc.
+          ChannelID:  int (channel ID from NVR) or -1
+          Active:     bool
         """
         data = event.data
         event_channel = data.get("ChannelID", -1)
 
-        # Match by channel: accept if channel matches OR if channel is unknown (-1)
         if event_channel != -1 and event_channel != self._channel_id:
             return
 
         alarm_type = data.get("AlarmType", "")
         alarm_on = self._event_info.get("alarm_type_on", "")
-        alarm_off = self._event_info.get("alarm_type_off", "")
+        alarm_off = self._event_info.get("alarm_type_off")
+        auto_off = self._event_info.get("auto_off", False)
 
         if alarm_type == alarm_on:
             self._is_on = True
             self.async_write_ha_state()
-        elif alarm_type == alarm_off:
+            # Start auto-off timer if this event type has no Off push
+            if auto_off:
+                self._schedule_auto_off()
+
+        elif alarm_off and alarm_type == alarm_off:
+            self._cancel_auto_off()
             self._is_on = False
             self.async_write_ha_state()
