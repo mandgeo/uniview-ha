@@ -12,6 +12,8 @@ SCAN_INTERVAL_SECONDS = 30
 DEFAULT_PORT = 80
 DEFAULT_HTTPS_PORT = 443
 
+AUTO_OFF_SECONDS = 30
+
 # ── Alarm / Event definitions ─────────────────────────────────────────────────
 #
 # AlarmType strings pushed by device (from AlarmInfo.AlarmType in push payload):
