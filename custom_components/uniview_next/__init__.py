@@ -15,6 +15,8 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from .dashboard import async_create_dashboard_if_missing
+
 from .const import (
     CONF_SET_NOTIFICATION_HOST,
     CONF_USE_HTTPS,
@@ -131,6 +133,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # Generează dashboard Lovelace dacă nu există deja
+    hass.async_create_task(
+        async_create_dashboard_if_missing(hass, entry)
+    )
 
     # Register HTTP view to receive alarm push from NVR.
     # NVR POSTs to: http://<ha_ip>:<port>/LAPI/V1.0/System/Event/Notification/Alarm
