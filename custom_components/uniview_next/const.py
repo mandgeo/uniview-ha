@@ -12,21 +12,8 @@ SCAN_INTERVAL_SECONDS = 30
 DEFAULT_PORT = 80
 DEFAULT_HTTPS_PORT = 443
 
+# Seconds after which a smart sensor auto-resets if no Off event received
 AUTO_OFF_SECONDS = 30
-
-# ── Alarm / Event definitions ─────────────────────────────────────────────────
-#
-# AlarmType strings pushed by device (from AlarmInfo.AlarmType in push payload):
-#   "<EventName>AlarmOn"  / "<EventName>AlarmOff"
-#
-# endpoint_type:
-#   "motion_grid"  → /Channels/<ID>/Alarm/MotionDetection/Areas/Grid  (Enabled field)
-#   "tamper"       → /Channels/<ID>/Alarm/TamperDetection/Rule         (Enabled field)
-#   "video_loss"   → /Channels/<ID>/Alarm/VideoLoss/Rule               (Enabled field)
-#   "smart"        → /Channels/<ID>/Smart/<smart_key>/Rule             (Enabled field)
-#
-# smart_key: used for Smart endpoints (CrossLineDetection, IntrusionDetection,
-#            LeaveZone, AccessZone)
 
 ALARM_EVENTS: dict[str, dict] = {
     "MotionDetection": {
@@ -38,6 +25,7 @@ ALARM_EVENTS: dict[str, dict] = {
         "alarm_type_on": "MotionAlarmOn",
         "alarm_type_off": "MotionAlarmOff",
         "can_toggle": True,
+        "auto_off": False,
     },
     "TamperDetection": {
         "label": "Tampering",
@@ -48,6 +36,7 @@ ALARM_EVENTS: dict[str, dict] = {
         "alarm_type_on": "TamperAlarmOn",
         "alarm_type_off": "TamperAlarmOff",
         "can_toggle": True,
+        "auto_off": False,
     },
     "VideoLoss": {
         "label": "Video Loss",
@@ -57,7 +46,8 @@ ALARM_EVENTS: dict[str, dict] = {
         "smart_key": None,
         "alarm_type_on": "VideoLossAlarmOn",
         "alarm_type_off": "VideoLossAlarmOff",
-        "can_toggle": False,  # NVR-only, read-only for now
+        "can_toggle": False,
+        "auto_off": False,
     },
     "CrossLineDetection": {
         "label": "Line Crossing",
@@ -66,8 +56,9 @@ ALARM_EVENTS: dict[str, dict] = {
         "endpoint_type": "smart",
         "smart_key": "CrossLineDetection",
         "alarm_type_on": "LineDetectorCrossed",
-        "alarm_type_off": None,   # NVR nu trimite Off — auto-reset în senzor
+        "alarm_type_off": None,
         "can_toggle": True,
+        "auto_off": True,
     },
     "IntrusionDetection": {
         "label": "Intrusion Detection",
@@ -76,8 +67,9 @@ ALARM_EVENTS: dict[str, dict] = {
         "endpoint_type": "smart",
         "smart_key": "IntrusionDetection",
         "alarm_type_on": "FieldDetectorObjectsInside",
-        "alarm_type_off": "FieldDetectorObjectsOutside",  # ipotetic
+        "alarm_type_off": "FieldDetectorObjectsOutside",
         "can_toggle": True,
+        "auto_off": True,
     },
     "LeaveZone": {
         "label": "Region Exit",
@@ -88,6 +80,7 @@ ALARM_EVENTS: dict[str, dict] = {
         "alarm_type_on": "LeaveZoneAlarmOn",
         "alarm_type_off": "LeaveZoneAlarmOff",
         "can_toggle": True,
+        "auto_off": False,
     },
     "AccessZone": {
         "label": "Region Entrance",
@@ -98,6 +91,7 @@ ALARM_EVENTS: dict[str, dict] = {
         "alarm_type_on": "AccessZoneAlarmOn",
         "alarm_type_off": "AccessZoneAlarmOff",
         "can_toggle": True,
+        "auto_off": False,
     },
 }
 
