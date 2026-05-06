@@ -217,7 +217,7 @@ def _build_dashboards_registry_entry() -> dict[str, Any]:
         "title": DASHBOARD_TITLE,
         "icon": DASHBOARD_ICON,
         "show_in_sidebar": True,
-        "require_admin": False,
+        "require_admin": True,
         "mode": "storage",
     }
 
