@@ -22,7 +22,7 @@ from homeassistant.helpers import entity_registry as er
 _LOGGER = logging.getLogger(__name__)
 
 DASHBOARD_SLUG = "uniview-cameras"
-DASHBOARD_TITLE = "Camere Uniview"
+DASHBOARD_TITLE = "Uniview"
 DASHBOARD_ICON = "mdi:cctv"
 
 # Fișiere .storage
@@ -134,7 +134,7 @@ def _build_camera_card(pair: dict[str, str]) -> dict[str, Any]:
                 "type": "picture-entity",
                 "entity": pair["sub"],
                 "name": pair["name"],
-                "show_name": True,
+                "show_name": False,
                 "show_state": False,
                 "camera_view": "auto",
                 "tap_action": {
@@ -147,9 +147,9 @@ def _build_camera_card(pair: dict[str, str]) -> dict[str, Any]:
                 "cards": [
                     {
                         "type": "button",
-                        "name": "Sub Stream",
+                        "name": "Sub",
                         "icon": "mdi:video-outline",
-                        "show_name": True,
+                        "show_name": False,
                         "show_icon": True,
                         "show_state": False,
                         "entity": pair["sub"],
@@ -160,9 +160,9 @@ def _build_camera_card(pair: dict[str, str]) -> dict[str, Any]:
                     },
                     {
                         "type": "button",
-                        "name": "Main Stream",
+                        "name": "Main",
                         "icon": "mdi:video-high-definition",
-                        "show_name": True,
+                        "show_name": False,
                         "show_icon": True,
                         "show_state": False,
                         "entity": pair["main"],
