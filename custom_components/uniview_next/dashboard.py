@@ -226,6 +226,8 @@ async def async_create_dashboard_if_missing(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> None:
+    _LOGGER.warning("Dashboard function called — starting")  # temporar
+
     """Creează dashboard-ul Uniview dacă nu există deja.
 
     Scrie direct în .storage — același mecanism folosit de HA intern.
