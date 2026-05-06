@@ -135,9 +135,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Generează dashboard Lovelace dacă nu există deja
+    _LOGGER.warning("About to create dashboard task")
     hass.async_create_task(
         async_create_dashboard_if_missing(hass, entry)
     )
+    _LOGGER.warning("Dashboard task created")
 
     # Register HTTP view to receive alarm push from NVR.
     # NVR POSTs to: http://<ha_ip>:<port>/LAPI/V1.0/System/Event/Notification/Alarm
