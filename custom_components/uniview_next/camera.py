@@ -115,9 +115,7 @@ class UnivewCamera(Camera):
             f"/unicast/c{self._channel_id}/s{self._stream_id}/live"
         )
 
-  async def async_camera_image(
-      self, width: int | None = None, height: int | None = None
-  ) -> bytes | None:
+  async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
       """Return JPEG snapshot via LAPI Snapshot endpoint."""
       try:
           return await self._device.get_snapshot(self._channel_id, self._stream_id)
